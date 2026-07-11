@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Nita AI - Modern Assistant</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary: #4fc3f7;
+            --bg-dark: #020617;
+            --bg-card: rgba(15, 23, 42, 0.6);
+            --text-dim: #94a3b8;
+            --border: rgba(79, 195, 247, 0.15);
+            --gold: #ffd700;
+            --red: #ff5252;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+            scroll-behavior: smooth;
+        }
+        body {
+            background: radial-gradient(circle at top right, rgba(79, 195, 247, 0.1), transparent 40%), var(--bg-dark);
+            color: white;
+            overflow-x: hidden;
+        }
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: 1s ease;
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .navbar {
+            width: 100%;
+            padding: 15px 7%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(15px);
+            background: rgba(2, 6, 23, 0.7);
+            border-bottom: 1px solid var(--border);
+        }
+        .logo {
+            font-weight: 800;
+            font-size: 22px;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+        @media (max-width: 768px) {
+            .nav-links .nav-item {
+                display: none;
+            }
+        }
+        .nav-item {
+            text-decoration: none;
+            color: white;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+        .nav-item:hover {
+            color: var(--primary);
+        }
+        .account-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            transition: 0.3s;
+            overflow: hidden;
+        }
+        .account-circle:hover {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+        .account-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .hero {
+            padding: 160px 7% 60px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hero h1 {
+            font-size: clamp(2.3rem, 7vw, 4.5rem);
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+        .hero p {
+            color: var(--text-dim);
+            max-width: 600px;
+            margin-bottom: 35px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 55px;
+        }
+        .btn {
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            text-decoration: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #020617;
+        }
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 1px solid var(--border);
+        }
+        .title-container {
+            text-align: center;
+            margin: 40px auto 20px;
+            padding: 0 5%;
+            width: 100%;
+        }
+        .animated-title {
+            font-size: clamp(2rem, 6vw, 2.8rem);
+            font-weight: 800;
+            background: linear-gradient(to right, #ffffff, var(--primary), #ffffff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 4s linear infinite;
+            display: inline-block;
+            position: relative;
+            white-space: pre-wrap;
+        }
+        .animated-title::after {
+            content: '|';
+            position: absolute;
+            right: -15px;
+            color: var(--primary);
+            animation: blink 0.75s step-end infinite;
+        }
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+        @keyframes blink {
+            from, to {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+        .features {
+            padding: 30px 7% 60px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: var(--bg-card);
+            padding: 35px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-decoration: none;
+            color: white;
+        }
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-8px);
+            box-shadow: 0 10px 30px rgba(79, 195, 247, 0.15);
+        }
+        .card h3 {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        .card p {
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .update-section {
+            padding: 60px 7%;
+        }
+        .update-box {
+            border-left: 2px solid var(--primary);
+            padding-left: 30px;
+            position: relative;
+        }
+        .update-box::before {
+            content: "";
+            width: 14px;
+            height: 14px;
+            background: var(--primary);
+            border-radius: 50%;
+            position: absolute;
+            left: -8px;
+            top: 5px;
+            box-shadow: 0 0 10px var(--primary);
+        }
+        .update-date {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 24px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        footer {
+            padding: 40px 7%;
+            text-align: center;
+            color: var(--text-dim);
+            border-top: 1px solid var(--border);
+            font-size: 14px;
+        }
+        .ai-choice-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .ai-choice-btn {
+            padding: 20px;
+            border-radius: 16px;
+            border: 2px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .ai-choice-btn:hover {
+            border-color: var(--primary);
+            background: rgba(79,195,247,0.1);
+            transform: scale(1.02);
+        }
+        .ai-choice-btn .icon {
+            font-size: 32px;
+            display: block;
+        }
+        .ai-choice-btn .label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="#" class="logo">Nita AI</a>
+        <div class="nav-links">
+            <a href="#updates" class="nav-item">Pembaruan</a>
+            <a href="mailto:startoolsid@gmail.com" class="nav-item">Bantuan</a>
+            <a href="account.html" class="account-circle" id="acc-link">
+                <img id="navProfilePic" src="https://i.ibb.co/2kR5zqM/user.png" style="display:none;">
+                <svg id="navDefaultIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </a>
+        </div>
+    </nav>
+    <section class="hero reveal">
+        <h1>Masa Depan AI <br><span style="color:var(--primary);">Dalam Genggaman</span></h1>
+        <p>Asisten yang dapat membantu & mempercepat pekerjaan. Mulai dari chat pintar, membuat kode program, sampai analisis data finansial.</p>
+        <div id="auth-buttons" class="btn-group"></div>
+    </section>
+    <div class="title-container reveal">
+        <h2 class="animated-title" id="typing-title">&nbsp;</h2>
+    </div>
+    <section class="features">
+        <a href="Images.html" class="card reveal" style="transition-delay: 0.3s">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <h3>Nita Images</h3>
+            <p>Visualisasikan ide. Cukup dengan ketik deskripsi, Nita akan Membuatkan gambar estetik dengan kualitas tinggi dalam hitungan detik.</p>
+        </a>
+        <a href="Analyst.html" class="card reveal" style="transition-delay: 0.4s">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            <h3>Nita Analyst</h3>
+            <p>Pantau pergerakan pasar dunia. Menampilkan chart crypto, emas, dan semua saham global secara real-time. Nita juga bisa buatin visualisasi chart kustom otomatis langsung berdasarkan cerita atau data kronologis yang lu ketik.</p>
+        </a>
+    </section>
+    <section id="updates" class="update-section reveal">
+        <h2 style="margin-bottom:40px; color:var(--primary);">Pembaruan & Changelog</h2>
+        <div class="update-box">
+            <div class="update-date">11 Juni 2026</div>
+            <h3>Nita - Analyst & Images Rilis Hari Ini</h3>
+            <p style="color:var(--text-dim); font-size:14px; margin-top:5px;">Rilis model Nita Analyst untuk data finansial real-time dan Nita Images untuk membuat gambar yang unik dan fantastis.</p>
+        </div>
+    </section>
+    <div id="aiChoiceModal" class="modal-overlay">
+        <div class="modal">
+            <h3 style="margin-bottom:10px; color:var(--primary);">Pilih Layanan Nita AI</h3>
+            <p style="color:var(--text-dim); font-size:14px; margin-bottom:15px;">Apa yang ingin Anda gunakan hari ini?</p>
+            <div class="ai-choice-grid">
+                <a href="Images.html" class="ai-choice-btn">
+                    <span class="icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </span>
+                    <span class="label">Nita Images</span>
+                </a>
+                <a href="Analyst.html" class="ai-choice-btn">
+                    <span class="icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </span>
+                    <span class="label">Nita Analyst</span>
+                </a>
+            </div>
+            <button onclick="closeAiChoiceModal()" class="btn btn-outline" style="width:100%; justify-content:center; margin-top:5px;">Tutup</button>
+        </div>
+    </div>
+    <div id="guestModal" class="modal-overlay">
+        <div class="modal">
+            <h3 style="margin-bottom:10px; color:var(--primary);">Mode Tamu</h3>
+            <p style="color:var(--text-dim); font-size:14px; margin-bottom:15px;">Pilih layanan yang ingin Anda gunakan sebagai tamu. Riwayat tidak akan disimpan.</p>
+            <div class="ai-choice-grid">
+                <a href="Images.html?mode=guest" class="ai-choice-btn">
+                    <span class="icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </span>
+                    <span class="label">Nita Images</span>
+                </a>
+                <a href="Analyst.html?mode=guest" class="ai-choice-btn">
+                    <span class="icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </span>
+                    <span class="label">Nita Analyst</span>
+                </a>
+            </div>
+            <button onclick="hideGuestModal()" class="btn btn-outline" style="width:100%; justify-content:center; margin-top:5px;">Batal</button>
+        </div>
+    </div>
+    <div id="alertModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="alertTitle" style="margin-bottom:15px;color:var(--primary);">Pemberitahuan</h3>
+            <p id="alertMessage" style="color:var(--text-dim);font-size:14px;line-height:1.6;margin-bottom:25px;"></p>
+            <button onclick="closeAlert()" class="btn btn-primary" style="width:100%;justify-content:center;">Mengerti</button>
+        </div>
+    </div>
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="confirmTitle" style="margin-bottom:15px;color:var(--primary);">Konfirmasi</h3>
+            <p id="confirmMessage" style="color:var(--text-dim);font-size:14px;line-height:1.6;margin-bottom:25px;"></p>
+            <div style="display:flex;gap:10px;">
+                <button onclick="closeConfirm(false)" class="btn btn-outline" style="flex:1;justify-content:center;">Batal</button>
+                <button onclick="closeConfirm(true)" class="btn btn-primary" style="flex:1;justify-content:center;">Lanjut</button>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <p>Created By Star Prosperous</p>
+        <p>&copy; 2026 Nita AI Assistant</p>
+    </footer>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDMNoOwpigjoyKQhw_luGXLpiMHAt5Yu3k",
+            authDomain: "nita-4cf57.firebaseapp.com",
+            projectId: "nita-4cf57",
+            storageBucket: "nita-4cf57.firebasestorage.app",
+            messagingSenderId: "1065921283781",
+            appId: "1:1065921283781:web:5c25c5780afdfd5d8e92ac"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const btnContainer = document.getElementById('auth-buttons');
+        const accLink = document.getElementById('acc-link');
+        const navProfilePic = document.getElementById('navProfilePic');
+        const navDefaultIcon = document.getElementById('navDefaultIcon');
+        function showAiChoiceModal() {
+            document.getElementById('aiChoiceModal').style.display = 'flex';
+        }
+        function closeAiChoiceModal() {
+            document.getElementById('aiChoiceModal').style.display = 'none';
+        }
+        document.getElementById('aiChoiceModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAiChoiceModal();
+        });
+        function showGuestModal() {
+            document.getElementById('guestModal').style.display = 'flex';
+        }
+        function hideGuestModal() {
+            document.getElementById('guestModal').style.display = 'none';
+        }
+        document.getElementById('guestModal').addEventListener('click', function(e) {
+            if (e.target === this) hideGuestModal();
+        });
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                db.ref("users/" + user.uid).on("value", (snap) => {
+                    const data = snap.val() || {};
+                    if (data.photoBase64) {
+                        navProfilePic.style.display = 'block';
+                        navDefaultIcon.style.display = 'none';
+                        navProfilePic.src = data.photoBase64;
+                    } else {
+                        navProfilePic.style.display = 'none';
+                        navDefaultIcon.style.display = 'block';
+                    }
+                });
+                btnContainer.innerHTML = `
+                    <button onclick="showAiChoiceModal()" class="btn btn-primary">Mulai Chat Sekarang</button>
+                    <button onclick="handleLogout()" class="btn btn-outline" style="color:var(--red);">Keluar Akun</button>
+                `;
+                accLink.href = "account.html";
+                accLink.style.borderColor = "var(--primary)";
+            } else {
+                navProfilePic.style.display = 'none';
+                navDefaultIcon.style.display = 'block';
+                btnContainer.innerHTML = `
+                    <a href="login.html" class="btn btn-primary">Masuk / Daftar</a>
+                    <button onclick="showGuestModal()" class="btn btn-outline">Mode Tamu</button>
+                `;
+                accLink.href = "login.html";
+            }
+        });
+        function handleLogout() {
+            customConfirm("Apakah Anda yakin ingin keluar dari akun ini?", (ok) => {
+                if (ok) {
+                    auth.signOut();
+                }
+            });
+        }
+        const reveals = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+        reveals.forEach(el => observer.observe(el));
+        const titleEl = document.getElementById('typing-title');
+        const textTarget = "Model-Model Nita";
+        titleEl.innerHTML = "";
+        let index = 0;
+        function typeWriter() {
+            if (index < textTarget.length) {
+                if (textTarget.charAt(index) === " ") {
+                    titleEl.innerHTML += "&nbsp;";
+                } else {
+                    titleEl.innerHTML += textTarget.charAt(index);
+                }
+                index++;
+                setTimeout(typeWriter, 120);
+            }
+        }
+        setTimeout(typeWriter, 400);
+        function customAlert(message, title = "Pemberitahuan") {
+            document.getElementById("alertTitle").innerText = title;
+            document.getElementById("alertMessage").innerText = message;
+            document.getElementById("alertModal").style.display = "flex";
+        }
+        function closeAlert() {
+            document.getElementById("alertModal").style.display = "none";
+        }
+        let confirmCallback = null;
+        function customConfirm(message, callback, title = "Konfirmasi") {
+            document.getElementById("confirmTitle").innerText = title;
+            document.getElementById("confirmMessage").innerText = message;
+            confirmCallback = callback;
+            document.getElementById("confirmModal").style.display = "flex";
+        }
+        function closeConfirm(result) {
+            document.getElementById("confirmModal").style.display = "none";
+            if (confirmCallback) {
+                confirmCallback(result);
+            }
+        }
+    </script>
+</body>
+</html>

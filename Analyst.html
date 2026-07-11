@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nita Analyst - Financial & Custom Data Engine</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-main: #060913;
+            --bg-panel-left: #0b0f19;
+            --bg-input: #121826;
+            --accent-purple: #a855f7;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --border-neon: rgba(168, 85, 247, 0.15);
+            --border-subtle: rgba(255,255,255,0.05);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            min-width: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .header-nav {
+            height: 60px;
+            background: var(--bg-main);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .logo-analyst {
+            font-family: Consolas, monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-purple);
+        }
+        .logo-analyst span {
+            color: white;
+            font-weight: 400;
+        }
+        .triple-dot-btn {
+            color: var(--text-muted);
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .app-body {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            overflow: hidden;
+        }
+        .panel-chat-workspace {
+            width: 450px;
+            max-width: 100%;
+            background: var(--bg-panel-left);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        @media(max-width:992px) {
+            .panel-chat-workspace {
+                width: 100%;
+                border-right: none;
+            }
+        }
+        .message-feed {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            padding-bottom: 120px;
+            width: 100%;
+            scroll-behavior: smooth;
+        }
+        .welcome-screen-analyst {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            max-width: 380px;
+            height: 100%;
+            margin: 0 auto;
+            min-height: 100%;
+            overflow: hidden;
+        }
+        .welcome-screen-analyst.hide {
+            display: none;
+        }
+        .welcome-screen-analyst h4 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            background: var(--accent-purple);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome-screen-analyst p {
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .hub-chart-card {
+            width: 100%;
+            background: rgba(11,15,25,0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .hub-chart-card canvas {
+            max-width: 100% !important;
+            display: block;
+        }
+        .suggestion-chip {
+            background: rgba(6,182,212,0.1);
+            border: 1px solid rgba(6,182,212,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .suggestion-chip:hover {
+            background: rgba(6,182,212,0.2);
+            transform: translateY(-2px);
+        }
+        .msg-row {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            clear: both;
+        }
+        .msg-row.user {
+            align-items: flex-end;
+        }
+        .msg-row.nita {
+            align-items: flex-start;
+        }
+        .sender-tag {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+        .msg-row.user .sender-tag {
+            color: var(--accent-cyan);
+        }
+        .msg-row.nita .sender-tag {
+            color: var(--accent-purple);
+        }
+        .bubble-box {
+            width: fit-content;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: hidden;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.6;
+            color: #e2e8f0;
+            font-size: 15px;
+        }
+        .msg-row.user .bubble-box {
+            width: auto;
+            max-width: 85%;
+            background: rgba(6,182,212,0.05);
+            border: 1px solid rgba(6,182,212,0.15);
+            padding: 10px 14px;
+            border-radius: 14px 14px 0 14px;
+        }
+        .msg-row.nita .bubble-box {
+            width: 100%;
+            max-width: 100%;
+        }
+        .tradingview-chat-box {
+            width: 100%;
+            max-width: 100%;
+            min-height: 420px;
+            height: 420px;
+            background: #0b0f19;
+            border: 1px solid rgba(6,182,212,0.2);
+            border-radius: 14px;
+            padding: 8px;
+            margin-top: 12px;
+            margin-bottom: 18px;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+            display: block;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+        }
+        .tradingview-chat-box iframe {
+            width: 100% !important;
+            height: 100% !important;
+            border: none;
+            border-radius: 10px;
+            display: block;
+        }
+        .input-area-container {
+            position: relative;
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(transparent, rgba(11,15,25,0.95) 25%, rgba(11,15,25,1) 100%);
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+        .input-bar-wrapper {
+            width: 100%;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+        }
+        .input-bar-wrapper:focus-within {
+            border-color: rgba(168,85,247,0.4);
+        }
+        .textarea-box {
+            flex: 1;
+            width: 100%;
+            height: 35px;
+            max-height: 100px;
+            resize: none;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            font-size: 13.5px;
+            line-height: 1.5;
+            padding-top: 6px;
+        }
+        .btn-send {
+            width: 35px;
+            height: 35px;
+            flex-shrink: 0;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-send:hover {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+        }
+        .btn-send svg {
+            width: 14px;
+            height: 14px;
+            fill: #94a3b8;
+        }
+        .btn-send:hover svg {
+            fill: white;
+        }
+        .panel-analytics-monitor {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: var(--bg-main);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        @media(max-width:992px) {
+            .panel-analytics-monitor {
+                display: none;
+            }
+        }
+        .monitor-header-grid {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .monitor-title {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .analytics-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+        .mini-stat-card {
+            background: #0b0f19;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: monospace;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            font-family: Consolas, monospace;
+        }
+        .stat-value.purple {
+            color: var(--accent-purple);
+        }
+        .big-chart-wrapper {
+            width: 100%;
+            background: #0b0f19;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 20px;
+        }
+        .chart-inside-title {
+            font-size: 12px;
+            color: #94a3b8;
+            font-family: monospace;
+            margin-bottom: 16px;
+            border-left: 2px solid var(--accent-purple);
+            padding-left: 8px;
+        }
+        .double-chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .custom-alert-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(2,6,23,0.85);
+            backdrop-filter: blur(8px);
+        }
+        .custom-alert-box {
+            width: 100%;
+            max-width: 380px;
+            padding: 24px;
+            text-align: center;
+            background: #0f172a;
+            border: 1px solid rgba(168,85,247,0.2);
+            border-radius: 14px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        .custom-alert-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--accent-purple);
+            margin-bottom: 12px;
+            font-family: Consolas, monospace;
+        }
+        .custom-alert-msg {
+            font-size: 13.5px;
+            line-height: 1.5;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+        .custom-alert-btn {
+            background: #1e293b;
+            border: 1px solid var(--border-subtle);
+            color: white;
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .custom-alert-btn:hover {
+            background: var(--accent-purple);
+            color: #020617;
+        }
+        iframe {
+            max-width: 100%;
+        }
+        img {
+            max-width: 100%;
+            display: block;
+        }
+        canvas {
+            max-width: 100% !important;
+        }
+        @media(max-width:768px) {
+            .tradingview-chat-box {
+                height: 350px;
+                min-height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-nav">
+        <div class="logo-analyst">NITA ANALYST<br><span>Chart Engine</span></div>
+        <div style="position: relative;">
+            <div id="statusBadge" class="triple-dot-btn" onclick="toggleDropMenu(event)">⋮</div>
+            <div id="dropMenuCoder" style="display: none; position: absolute; top: 35px; right: 0; background: #161b2c; border: 1px solid var(--border-subtle); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 100; min-width: 160px; overflow: hidden;">
+                <button onclick="triggerClearChatOnly()" style="width: 100%; background: transparent; border: none; color: #fbbf24; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);">Hapus Chat Saja</button>
+                <button onclick="triggerClearChat()" style="width: 100%; background: transparent; border: none; color: #f87171; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 500; cursor: pointer;">Hapus Semua</button>
+            </div>
+        </div>
+    </div>
+    <div class="app-body">
+        <div class="panel-chat-workspace">
+            <div class="message-feed" id="chatStream">
+                <div class="welcome-screen-analyst" id="welcomeScreenAnalyst">
+                    <div class="hub-chart-card">
+                        <canvas id="hubAnimationChart" height="180"></canvas>
+                    </div>
+                    <h4>Nita Analyst Workspace</h4>
+                    <p>Nita Analyst siap membantu menyusun analitik, memetakan grafik pergerakan data, atau menganalisis tren statistik pada program Anda.</p>
+                    <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; justify-content: center;">
+                        <div class="suggestion-chip" onclick="quickAskAnalyst('chart btc')">📈 Chart BTC</div>
+                        <div class="suggestion-chip" onclick="quickAskAnalyst('chart eth')">📊 Chart ETH</div>
+                        <div class="suggestion-chip" onclick="quickAskAnalyst('senin 50rb, selasa 75rb, rabu 100rb, kamis 120rb, jumat 200rb')">📉 Data Omset</div>
+                    </div>
+                </div>
+            </div>
+            <div class="input-area-container">
+                <div class="input-bar-wrapper">
+                    <textarea id="messageInput" class="textarea-box" placeholder="Ketik Munculkan chart..." oninput="autoExpand(this)"></textarea>
+                    <button onclick="processUniversalEngine()" class="btn-send" title="Jalankan Engine">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="panel-analytics-monitor">
+            <div class="monitor-header-grid">
+                <div class="monitor-title">CUSTOM_DATA_WORKSPACE_MONITOR</div>
+                <div style="font-size: 11px; font-family: monospace; color: var(--accent-green);">MONITOR_STATUS: SYNC_READY</div>
+            </div>
+            <div class="analytics-cards-grid">
+                <div class="mini-stat-card">
+                    <div class="stat-label">TOTAL_ITEMS</div>
+                    <div class="stat-value" id="valTotalData">6 Items</div>
+                </div>
+                <div class="mini-stat-card">
+                    <div class="stat-label">MAXIMUM_VALUE</div>
+                    <div class="stat-value purple" id="valMaxData">96</div>
+                </div>
+                <div class="mini-stat-card">
+                    <div class="stat-label">AVERAGE_VALUE</div>
+                    <div class="stat-value" id="valAvgData" style="color:var(--accent-green)">81.5</div>
+                </div>
+            </div>
+            <div class="big-chart-wrapper">
+                <div class="chart-inside-title">PROYEKSI GRAFIK GARIS (CUSTOM DATA)</div>
+                <canvas id="mainLineChart" height="110"></canvas>
+            </div>
+            <div class="double-chart-row">
+                <div class="big-chart-wrapper">
+                    <div class="chart-inside-title">KOMPARASI STRUKTUR BATANG</div>
+                    <canvas id="subBarChart" height="170"></canvas>
+                </div>
+                <div class="big-chart-wrapper">
+                    <div class="chart-inside-title">PROPORSI SEGMENTASI LINGKARAN</div>
+                    <canvas id="subDonutChart" height="170"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="customAlertModal" class="custom-alert-overlay">
+        <div class="custom-alert-box">
+            <div id="customAlertTitle" class="custom-alert-title">ANALYST_ALERT</div>
+            <div id="customAlertMessage" class="custom-alert-msg">Pesan detektor engine.</div>
+            <button class="custom-alert-btn" onclick="closeCustomAlert()">OK</button>
+        </div>
+    </div>
+    <div id="customConfirmModal" class="custom-alert-overlay" style="display: none;">
+        <div class="custom-alert-box" style="max-width: 380px; width: 90%; border-color: rgba(168, 85, 247, 0.4);">
+            <div id="customConfirmTitle" class="custom-alert-title" style="color: var(--accent-purple); font-size: 16px;">⚠️ KONFIRMASI</div>
+            <div id="customConfirmMessage" class="custom-alert-msg" style="color: #cbd5e1;">Apakah Anda yakin?</div>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 8px;">
+                <button id="confirmYesBtn" class="custom-alert-btn" style="background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; border: none; padding: 8px 20px; font-weight: 600;">Ya, Hapus</button>
+                <button id="confirmNoBtn" class="custom-alert-btn" style="background: #1e293b; border: 1px solid rgba(168, 85, 247, 0.3); color: #cbd5e1; padding: 8px 20px;">Batal</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDMNoOwpigjoyKQhw_luGXLpiMHAt5Yu3k",
+            authDomain: "nita-4cf57.firebaseapp.com",
+            databaseURL: "https://nita-4cf57-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nita-4cf57",
+            storageBucket: "nita-4cf57.firebasestorage.app",
+            messagingSenderId: "1065921283781",
+            appId: "1:1065921283781:web:5c25c5780afdfd5d8e92ac",
+            measurementId: "G-71SKW94741"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let isFirstMessageSent = false;
+        let hubChartObj, hubInterval;
+        let mainLineChartObj, subBarChartObj, subDonutChartObj;
+        let globalCodeCounter = 0;
+        const marketSymbolMap = {
+            'btc': 'BINANCE:BTCUSDT',
+            'bitcoin': 'BINANCE:BTCUSDT',
+            'eth': 'BINANCE:ETHUSDT',
+            'ethereum': 'BINANCE:ETHUSDT',
+            'sol': 'BINANCE:SOLUSDT',
+            'solana': 'BINANCE:SOLUSDT',
+            'bnb': 'BINANCE:BNBUSDT',
+            'doge': 'BINANCE:DOGEUSDT',
+            'emas': 'OANDA:XAUUSD',
+            'gold': 'OANDA:XAUUSD',
+            'xau': 'OANDA:XAUUSD'
+        };
+        async function saveChatAnalyst(sender, text) {
+            try {
+                let chats = JSON.parse(localStorage.getItem("nita_analyst_chats") || "[]");
+                chats.push({ sender, text, timestamp: Date.now() });
+                if (chats.length > 200) chats = chats.slice(-200);
+                localStorage.setItem("nita_analyst_chats", JSON.stringify(chats));
+                await db.ref("nita-analyst/conversations").push({
+                    sender: sender,
+                    text: text,
+                    timestamp: Date.now(),
+                    device: "web"
+                });
+                console.log("Chat tersimpan");
+            } catch (err) {
+                console.log("Gagal tersimpan:", err);
+            }
+        }
+        function loadChatFromLocalAnalyst() {
+            const chats = JSON.parse(localStorage.getItem("nita_analyst_chats") || "[]");
+            if (chats.length > 0) {
+                const welcomeScreen = document.getElementById("welcomeScreenAnalyst");
+                if (welcomeScreen) welcomeScreen.classList.add("hide");
+                isFirstMessageSent = true;
+            }
+            chats.forEach(chat => {
+                renderChatBubbleAnalyst(chat.text, chat.sender, false);
+            });
+        }
+        function renderChatBubbleAnalyst(text, sender, saveToStorage = true) {
+            if (!isFirstMessageSent && (sender === 'user' || sender === 'nita')) {
+                const welcomeScreen = document.getElementById("welcomeScreenAnalyst");
+                if (welcomeScreen) welcomeScreen.classList.add("hide");
+                isFirstMessageSent = true;
+            }
+            const stream = document.getElementById("chatStream");
+            const row = document.createElement("div");
+            row.className = `msg-row ${sender}`;
+            const label = sender === 'user' ? 'KAMU' : 'NITA ANALYST';
+            row.innerHTML = `<span class="sender-tag">${label}</span><div class="bubble-box">${text}</div>`;
+            stream.appendChild(row);
+            stream.scrollTop = stream.scrollHeight;
+            if (saveToStorage) {
+                saveChatAnalyst(sender, text);
+            }
+        }
+        function initHubChart() {
+            const ctxHub = document.getElementById("hubAnimationChart");
+            if (!ctxHub) return;
+            const ctx = ctxHub.getContext("2d");
+            let hubLabels = Array.from({length: 12}, (_, i) => `0${i+1}`);
+            let dataWave1 = [10, 22, 18, 35, 28, 44, 38, 52, 48, 65, 58, 72];
+            let dataWave2 = [25, 15, 30, 20, 38, 25, 45, 32, 50, 40, 55, 45];
+            if (hubChartObj) hubChartObj.destroy();
+            hubChartObj = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hubLabels,
+                    datasets: [
+                        { label: 'BTC', data: dataWave1, borderColor: '#06b6d4', backgroundColor: 'transparent', tension: 0.4, borderWidth: 2, pointRadius: 0 },
+                        { label: 'IDX BBCA', data: dataWave2, borderColor: '#a855f7', backgroundColor: 'transparent', tension: 0.4, borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: true, grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#475569', font: { size: 9 } } },
+                        x: { display: true, grid: { display: false }, ticks: { color: '#475569', font: { size: 9 } } }
+                    },
+                    animation: { duration: 0 }
+                }
+            });
+            if (hubInterval) clearInterval(hubInterval);
+            hubInterval = setInterval(() => {
+                if(!document.getElementById("hubAnimationChart")) return;
+                dataWave1.shift();
+                dataWave1.push(Math.max(5, Math.min(85, dataWave1[dataWave1.length - 1] + (Math.random() * 16 - 8))));
+                dataWave2.shift();
+                dataWave2.push(Math.max(5, Math.min(85, dataWave2[dataWave2.length - 1] + (Math.random() * 16 - 8))));
+                if (hubChartObj) hubChartObj.update();
+            }, 300);
+        }
+        function initMonitorCharts() {
+            const ctxLine = document.getElementById("mainLineChart").getContext("2d");
+            mainLineChartObj = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: ['Data 1', 'Data 2', 'Data 3', 'Data 4', 'Data 5', 'Data 6'],
+                    datasets: [{
+                        label: 'Nilai Real',
+                        data: [65, 78, 72, 85, 81, 96],
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                        tension: 0.35,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } }
+            });
+            const ctxBar = document.getElementById("subBarChart").getContext("2d");
+            subBarChartObj = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Data 1', 'Data 2', 'Data 3', 'Data 4', 'Data 5', 'Data 6'],
+                    datasets: [{
+                        data: [65, 78, 72, 85, 81, 96],
+                        backgroundColor: 'rgba(6, 182, 212, 0.4)',
+                        borderColor: '#06b6d4',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748b' } }, x: { grid: { display: false }, ticks: { color: '#64748b' } } } }
+            });
+            const ctxDonut = document.getElementById("subDonutChart").getContext("2d");
+            subDonutChartObj = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sektor A', 'Sektor B', 'Sektor C'],
+                    datasets: [{
+                        data: [40, 35, 25],
+                        backgroundColor: ['#10b981', '#06b6d4', '#a855f7'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } }
+            });
+        }
+        function customConfirm(message, onYes, onNo) {
+            const modal = document.getElementById('customConfirmModal');
+            const msgEl = document.getElementById('customConfirmMessage');
+            if (!modal || !msgEl) return false;
+            msgEl.innerHTML = message;
+            modal.style.display = 'flex';
+            const handleYes = () => {
+                modal.style.display = 'none';
+                if (onYes && typeof onYes === 'function') onYes();
+                cleanup();
+            };
+            const handleNo = () => {
+                modal.style.display = 'none';
+                if (onNo && typeof onNo === 'function') onNo();
+                cleanup();
+            };
+            const cleanup = () => {
+                const yesBtn = document.getElementById('confirmYesBtn');
+                const noBtn = document.getElementById('confirmNoBtn');
+                if (yesBtn) yesBtn.removeEventListener('click', handleYes);
+                if (noBtn) noBtn.removeEventListener('click', handleNo);
+            };
+            const yesBtn = document.getElementById('confirmYesBtn');
+            const noBtn = document.getElementById('confirmNoBtn');
+            if (yesBtn) yesBtn.removeEventListener('click', handleYes);
+            if (noBtn) noBtn.removeEventListener('click', handleNo);
+            if (yesBtn) yesBtn.addEventListener('click', handleYes);
+            if (noBtn) noBtn.addEventListener('click', handleNo);
+        }
+        function clearAllHistory() {
+            const welcomeScreen = document.getElementById("welcomeScreenAnalyst");
+            if (welcomeScreen) {
+                welcomeScreen.classList.remove("hide");
+            }
+            isFirstMessageSent = false;
+            const chatStream = document.getElementById("chatStream");
+            const welcomeDiv = document.getElementById("welcomeScreenAnalyst");
+            const children = chatStream.children;
+            const toRemove = [];
+            for (let i = 0; i < children.length; i++) {
+                if (children[i] !== welcomeDiv) {
+                    toRemove.push(children[i]);
+                }
+            }
+            toRemove.forEach(child => {
+                chatStream.removeChild(child);
+            });
+            localStorage.removeItem("nita_analyst_chats");
+            db.ref("nita-analyst/conversations").remove().catch(err => console.log(err));
+            document.getElementById("valTotalData").innerText = "6 Items";
+            document.getElementById("valMaxData").innerText = "96";
+            document.getElementById("valAvgData").innerText = "81.5";
+            if (mainLineChartObj) {
+                mainLineChartObj.data.datasets[0].data = [65, 78, 72, 85, 81, 96];
+                mainLineChartObj.data.labels = ['Data 1', 'Data 2', 'Data 3', 'Data 4', 'Data 5', 'Data 6'];
+                mainLineChartObj.update();
+            }
+            if (subBarChartObj) {
+                subBarChartObj.data.datasets[0].data = [65, 78, 72, 85, 81, 96];
+                subBarChartObj.data.labels = ['Data 1', 'Data 2', 'Data 3', 'Data 4', 'Data 5', 'Data 6'];
+                subBarChartObj.update();
+            }
+            if (subDonutChartObj) {
+                subDonutChartObj.data.datasets[0].data = [40, 35, 25];
+                subDonutChartObj.update();
+            }
+            if (hubChartObj) {
+                if (hubChartObj.data.datasets[0]) {
+                    hubChartObj.data.datasets[0].data = [10, 22, 18, 35, 28, 44, 38, 52, 48, 65, 58, 72];
+                    hubChartObj.data.datasets[1].data = [25, 15, 30, 20, 38, 25, 45, 32, 50, 40, 55, 45];
+                    hubChartObj.update();
+                }
+            }
+            const menu = document.getElementById("dropMenuCoder");
+            if (menu) menu.style.display = "none";
+        }
+        function clearChatOnly() {
+            const welcomeScreen = document.getElementById("welcomeScreenAnalyst");
+            if (welcomeScreen) {
+                welcomeScreen.classList.remove("hide");
+            }
+            isFirstMessageSent = false;
+            const chatStream = document.getElementById("chatStream");
+            const welcomeDiv = document.getElementById("welcomeScreenAnalyst");
+            const children = chatStream.children;
+            const toRemove = [];
+            for (let i = 0; i < children.length; i++) {
+                if (children[i] !== welcomeDiv) {
+                    toRemove.push(children[i]);
+                }
+            }
+            toRemove.forEach(child => {
+                chatStream.removeChild(child);
+            });
+            localStorage.removeItem("nita_analyst_chats");
+            const menu = document.getElementById("dropMenuCoder");
+            if (menu) menu.style.display = "none";
+        }
+        function triggerClearChat() {
+            customConfirm(
+                '⚠️ <strong style="color: #a855f7;">Hapus Semua Data?</strong><br><br>✅ Semua riwayat chat akan dihapus<br>✅ Dashboard akan kembali ke default<br>✅ Data grafik akan direset<br><br><span style="color: #f87171;">⚠️ Tindakan ini permanen!</span>',
+                () => {
+                    clearAllHistory();
+                }
+            );
+        }
+        function triggerClearChatOnly() {
+            customConfirm(
+                '🗑️ <strong style="color: #fbbf24;">Hapus Chat Saja?</strong><br><br>✅ Hanya riwayat chat yang akan dihapus<br>✅ Dashboard dan data tetap utuh<br><br><span style="color: #10b981;">💡 Data tidak akan hilang permanen</span>',
+                () => {
+                    clearChatOnly();
+                }
+            );
+        }
+        function autoExpand(element) {
+            element.style.height = '35px';
+            element.style.height = (element.scrollHeight) + 'px';
+        }
+        function quickAskAnalyst(text) {
+            document.getElementById("messageInput").value = text;
+            processUniversalEngine();
+        }
+        async function processUniversalEngine() {
+            const inputEl = document.getElementById("messageInput");
+            const text = inputEl.value.trim();
+            if (!text) return;
+            renderChatBubbleAnalyst(text, 'user', true);
+            inputEl.value = "";
+            inputEl.style.height = '35px';
+            const lowerText = text.toLowerCase();
+            let foundMarketSymbol = null;
+            let displayAssetTitle = "";
+            for (const key in marketSymbolMap) {
+                if (lowerText.includes(key)) {
+                    foundMarketSymbol = marketSymbolMap[key];
+                    displayAssetTitle = key.toUpperCase();
+                    break;
+                }
+            }
+            if (lowerText.startsWith("chart ")) {
+                const rawSymbol = text.substring(6).trim().toUpperCase();
+                if (rawSymbol.length > 0 && !foundMarketSymbol) {
+                    if (["BBCA", "BBRI", "BMRI", "TLKM", "GOTO"].includes(rawSymbol)) {
+                        foundMarketSymbol = "IDX:" + rawSymbol;
+                    } else {
+                        foundMarketSymbol = rawSymbol;
+                    }
+                    displayAssetTitle = rawSymbol;
+                }
+            }
+            if (foundMarketSymbol) {
+                globalCodeCounter++;
+                const containerId = `tv-chart-box-${globalCodeCounter}`;
+                const chartHtml = `Grafik live <b>${displayAssetTitle}</b> Sukses dimuat. Silakan pantau pergerakannya langsung!
+                    <div class="tradingview-chat-box" id="${containerId}"></div>`;
+                renderChatBubbleAnalyst(chartHtml, 'nita', true);
+                const oldScript = document.querySelector(`script[data-symbol="${foundMarketSymbol}"]`);
+                if (oldScript) oldScript.remove();
+                const script = document.createElement('script');
+                script.setAttribute('data-symbol', foundMarketSymbol);
+                script.type = 'text/javascript';
+                script.src = 'https://s3.tradingview.com/tv.js';
+                script.async = true;
+                script.onload = () => {
+                    if (typeof TradingView !== 'undefined') {
+                        new TradingView.widget({
+                            "width": "100%", "height": "100%", "symbol": foundMarketSymbol, "interval": "D",
+                            "timezone": "Asia/Jakarta", "theme": "dark", "style": "1", "locale": "id",
+                            "toolbar_bg": "#121826", "enable_publishing": false, "hide_side_toolbar": true,
+                            "allow_symbol_change": false, "container_id": containerId
+                        });
+                    }
+                };
+                document.head.appendChild(script);
+                return;
+            }
+            const regexPinter = /(senin|selasa|rabu|kamis|jumat|sabtu|minggu|januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember|jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|des|\bdata\s*\d+)\b[^0-9]*([0-9\.,]+)\s*(ribu|jt|juta|k|K|rb)?/g;
+            let matches;
+            let extractedLabels = [];
+            let extractedValues = [];
+            while ((matches = regexPinter.exec(lowerText)) !== null) {
+                let label = matches[1].toUpperCase();
+                let rawNum = matches[2].replace(/,/g, '.');
+                let suffix = matches[3];
+                const totalDots = (rawNum.match(/\./g) || []).length;
+                if (totalDots > 1) {
+                    rawNum = rawNum.replace(/\./g, '');
+                }
+                let value = parseFloat(rawNum);
+                if (suffix) {
+                    if (suffix.includes('ribu') || suffix === 'k' || suffix === 'rb') {
+                        value = value * 1000;
+                    } else if (suffix.includes('jt') || suffix.includes('juta')) {
+                        value = value * 1000000;
+                    }
+                } else {
+                    if (value < 1000 && value > 0) {
+                        value = value * 1000;
+                    }
+                }
+                if (!isNaN(value) && value > 0) {
+                    extractedLabels.push(label);
+                    extractedValues.push(value);
+                }
+            }
+            if (extractedLabels.length > 0) {
+                renderChatBubbleAnalyst("📊 Mantap bre! Data cerita lu langsung gua ringkas jadi grafik visual di bawah dan dashboard udah sinkron.", "nita", true);
+                const chartObj = {
+                    type: extractedLabels.length > 5 ? 'line' : 'bar',
+                    labels: extractedLabels,
+                    data: extractedValues,
+                    label: "Nilai Data (Rp)"
+                };
+                renderChartInBubbleAnalyst(chartObj);
+                const totalItems = chartObj.data.length;
+                const maxVal = Math.max(...chartObj.data);
+                const avgVal = (chartObj.data.reduce((a, b) => a + b, 0) / totalItems).toFixed(0);
+                document.getElementById("valTotalData").innerText = `${totalItems} Items`;
+                document.getElementById("valMaxData").innerText = maxVal.toLocaleString('id-ID');
+                document.getElementById("valAvgData").innerText = parseInt(avgVal).toLocaleString('id-ID');
+                if (mainLineChartObj) {
+                    mainLineChartObj.data.labels = chartObj.labels;
+                    mainLineChartObj.data.datasets[0].data = chartObj.data;
+                    mainLineChartObj.data.datasets[0].label = chartObj.label;
+                    mainLineChartObj.update();
+                }
+                if (subBarChartObj) {
+                    subBarChartObj.data.labels = chartObj.labels;
+                    subBarChartObj.data.datasets[0].data = chartObj.data;
+                    subBarChartObj.update();
+                }
+            } else {
+                renderChatBubbleAnalyst("Coba kasih data dengan format:<br><br>• <b>chart btc</b> - untuk grafik crypto<br>• <b>senin 50rb, selasa 75rb, rabu 100rb</b> - untuk data omset<br><br>Nita bakal bikin grafiknya otomatis!", "nita", true);
+            }
+        }
+        function toggleDropMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById("dropMenuCoder");
+            menu.style.display = (menu.style.display === "block") ? "none" : "block";
+        }
+        window.addEventListener("click", function() {
+            const menu = document.getElementById("dropMenuCoder");
+            if (menu) menu.style.display = "none";
+        });
+        function openCustomAlert(message, title = "Pemberitahuan") {
+            document.getElementById("customAlertTitle").innerText = title;
+            document.getElementById("customAlertMessage").innerHTML = message;
+            document.getElementById("customAlertModal").style.display = "flex";
+        }
+        function closeCustomAlert() {
+            document.getElementById("customAlertModal").style.display = "none";
+        }
+        function renderChartInBubbleAnalyst(chartData) {
+            const canvasId = "chart-" + Date.now();
+            const stream = document.getElementById("chatStream");
+            const div = document.createElement("div");
+            div.className = "msg-row nita";
+            div.style.width = "100%";
+            div.style.maxWidth = "360px";
+            div.style.margin = "8px 0";
+            div.style.padding = "12px";
+            div.style.background = "var(--bg-input, #121826)";
+            div.style.borderRadius = "12px";
+            div.style.border = "1px solid rgba(6, 182, 212, 0.25)";
+            div.innerHTML = `
+                <span class="sender-tag" style="margin-bottom:6px; display:block; font-size:10.5px; color: var(--accent-cyan);">Nita Analyst (Chart Visual)</span>
+                <div style="position: relative; width: 100%; height: 140px;">
+                    <canvas id="${canvasId}"></canvas>
+                </div>
+            `;
+            stream.appendChild(div);
+            stream.scrollTop = stream.scrollHeight;
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: chartData.type || 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: chartData.label || 'Data User',
+                        data: chartData.data,
+                        borderColor: '#06b6d4',
+                        backgroundColor: chartData.type === 'line' ? 'rgba(6, 182, 212, 0.1)' : '#a855f7',
+                        borderWidth: 1.5,
+                        borderRadius: 4,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#f8fafc', font: { size: 8.5 }, boxWidth: 10, boxHeight: 8 }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 8.5 } }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b', font: { size: 8.5 } }, grid: { color: 'rgba(255,255,255,0.02)' } }
+                    }
+                }
+            });
+            saveChatAnalyst("nita", "[CHART VISUAL] Data chart telah ditampilkan");
+        }
+        window.onload = function() {
+            loadChatFromLocalAnalyst();
+            initHubChart();
+            initMonitorCharts();
+        };
+    </script>
+</body>
+</html>

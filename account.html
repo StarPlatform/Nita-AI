@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akun - Nita AI</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary: #4fc3f7;
+            --bg: #020617;
+            --card: #0f172a;
+            --border: rgba(79, 195, 247, 0.15);
+            --text: #94a3b8;
+            --verified: #1d9bf0;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: sans-serif;
+        }
+        body {
+            background: var(--bg);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .profile-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 40px 25px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            cursor: pointer;
+            color: var(--text);
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-btn:hover {
+            color: white;
+            transform: scale(1.1);
+        }
+        .sub-page {
+            display: none;
+            text-align: left;
+        }
+        .avatar-area {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 15px auto 20px;
+        }
+        #profilePic {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+            background: #1e293b;
+        }
+        .camera-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: var(--primary);
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 3px solid var(--card);
+        }
+        .name-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 5px;
+        }
+        #userName {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #verifiedBadge {
+            display: none;
+            color: var(--verified);
+            width: 22px;
+            height: 22px;
+        }
+        #userEmail {
+            color: var(--text);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .menu-list {
+            text-align: left;
+            display: grid;
+            gap: 5px;
+        }
+        .menu-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 15px 20px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .menu-item:active {
+            background: rgba(79, 195, 247, 0.1);
+        }
+        .dropdown-panel {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 0 15px;
+            margin-top: -5px;
+            margin-bottom: 5px;
+            border: 1px solid transparent;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.3s ease,
+                        padding 0.4s ease,
+                        border-color 0.4s ease;
+        }
+        .dropdown-panel.show {
+            max-height: 200px;
+            opacity: 1;
+            padding: 5px 15px;
+            border-color: var(--border);
+        }
+        .sub-menu {
+            padding: 15px 5px;
+            color: var(--text);
+            font-size: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+        }
+        .sub-menu:last-child {
+            border: none;
+        }
+        .sub-menu:hover {
+            color: white;
+        }
+        .arrow-icon {
+            transition: transform 0.2s;
+        }
+        .page-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: white;
+        }
+        .page-desc {
+            font-size: 13px;
+            color: var(--text);
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--primary);
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+        .input-box, .select-box {
+            width: 100%;
+            padding: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            outline: none;
+        }
+        .input-box:focus, .select-box:focus {
+            border-color: var(--primary);
+        }
+        .toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            padding: 16px;
+            border-radius: 15px;
+            margin-top: 10px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #334155;
+            transition: .3s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        .btn-action {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn-save {
+            background: var(--primary);
+            color: #020617;
+        }
+        .btn-back {
+            background: rgba(255,255,255,0.05);
+            color: white;
+            border: 1px solid var(--border);
+        }
+        .btn-logout {
+            margin-top: 25px;
+            color: #ff5252;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .loading-overlay {
+            font-size: 12px;
+            color: var(--primary);
+            display: none;
+            margin-top: 10px;
+        }
+        .custom-alert-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .custom-alert-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .custom-alert-box {
+            width: 90%;
+            max-width: 380px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            text-align: center;
+            animation: alertPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .alert-icon {
+            width: 65px;
+            height: 65px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: rgba(255, 193, 7, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: #ffc107;
+        }
+        .custom-alert-box h3 {
+            margin-bottom: 12px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .custom-alert-box p {
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .alert-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .alert-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .alert-btn-primary {
+            background: var(--primary);
+            color: #020617;
+        }
+        .alert-btn-primary:active {
+            transform: scale(0.98);
+            background: #3baad6;
+        }
+        .alert-btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid var(--border);
+        }
+        .alert-btn-secondary:active {
+            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        body.alert-open {
+            overflow: hidden;
+        }
+        @keyframes alertPop {
+            from {
+                opacity: 0;
+                transform: scale(0.85) translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="profile-card">
+    <div id="mainPage">
+        <div class="close-btn" onclick="window.location.href='index.html'">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </div>
+        <div class="avatar-area">
+            <img id="profilePic" src="https://i.ibb.co/2kR5zqM/user.png">
+            <label for="fileInput" class="camera-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </label>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        <div id="loadMsg" class="loading-overlay">Menyimpan foto...</div>
+        <div class="name-container">
+            <div id="userName">Memuat...</div>
+            <svg id="verifiedBadge" viewBox="0 0 24 24" width="20" height="20" style="vertical-align:middle; transform: translateY(1px);">
+                <path d="M12 2l2.2 2 3-.5.8 2.9 2.9.8-.5 3 2 2-2 2 .5 3-2.9.8-.8 2.9-3-.5-2.2 2-2.2-2-3 .5-.8-2.9-2.9-.8.5-3-2-2 2-2-.5-3 2.9-.8.8-2.9 3 .5z" fill="#4fc3f7"/>
+                <path d="M8 12.5l2.5 2.5 5.5-6" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div id="userEmail">...</div>
+        <div class="menu-list">
+            <div class="menu-item" onclick="toggleDropdown('profileDropdown', 'arrowProfile')">
+                <span>Edit Profil</span>
+                <svg class="arrow-icon" id="arrowProfile" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div id="profileDropdown" class="dropdown-panel">
+                <div class="sub-menu" onclick="switchPage('namePage')">
+                    <span>Ubah Nama</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+                <div class="sub-menu" onclick="switchPage('agePage')">
+                    <span>Ubah Tanggal Lahir & Umur</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+                <div class="sub-menu" onclick="switchPage('genderPage')">
+                    <span>Ubah Gender</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+            </div>
+            <div class="menu-item" onclick="toggleDropdown('privacyDropdown', 'arrowPrivacy')">
+                <span>Opsi Privasi</span>
+                <svg class="arrow-icon" id="arrowPrivacy" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div id="privacyDropdown" class="dropdown-panel">
+                <div class="sub-menu" onclick="switchPage('hideEmailPage')">
+                    <span>Sembunyikan Alamat Email</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+            </div>
+            <div class="menu-item" onclick="toggleDropdown('accountDropdown', 'arrowAccount')">
+                <span>Kelola Akun</span>
+                <svg class="arrow-icon" id="arrowAccount" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div id="accountDropdown" class="dropdown-panel">
+                <div class="sub-menu" onclick="switchPage('emailPage')">
+                    <span>Ganti Email</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+                <div class="sub-menu" onclick="switchPage('passwordPage')">
+                    <span>Ganti Kata Sandi</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+            </div>
+        </div>
+        <div class="btn-logout" onclick="logout()">LOGOUT AKUN</div>
+    </div>
+    <div id="hideEmailPage" class="sub-page">
+        <div class="page-title">Sembunyikan Email</div>
+        <div class="page-desc">Aktifkan opsi ini jika Anda tidak ingin alamat email Anda ditampilkan pada halaman profil utama demi menjaga privasi akun dari tangkapan layar.</div>
+        <div class="toggle-container">
+            <div>
+                <div style="font-size: 15px; font-weight: bold;">Sembunyikan Email</div>
+                <div style="font-size: 12px; color: var(--text); margin-top: 2px;">Hilangkan teks email dari dasbor</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggleHideEmail" onchange="updatePrivacyEmail()">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="btn-container">
+            <button class="btn-action btn-back" onclick="switchPage('mainPage')" style="width: 100%;">Kembali ke Menu</button>
+        </div>
+    </div>
+    <div id="namePage" class="sub-page">
+        <div class="page-title">Ubah Nama</div>
+        <div class="page-desc">Perubahan nama Anda akan langsung terlihat di seluruh layanan Nita AI. Pastikan menggunakan nama asli Anda.</div>
+        <div class="form-group">
+            <label>NAMA DEPAN</label>
+            <input type="text" id="inputFirstName" class="input-box">
+        </div>
+        <div class="form-group">
+            <label>NAMA BELAKANG</label>
+            <input type="text" id="inputLastName" class="input-box">
+        </div>
+        <div class="btn-container">
+            <button class="btn-action btn-back" onclick="switchPage('mainPage')">Kembali</button>
+            <button class="btn-action btn-save" onclick="saveName()">Simpan</button>
+        </div>
+    </div>
+    <div id="agePage" class="sub-page">
+        <div class="page-title">Tanggal Lahir & Umur</div>
+        <div class="page-desc">Informasi ini digunakan untuk menyesuaikan kelompok usia Anda secara otomatis. Data ini bersifat privat.</div>
+        <div class="form-group">
+            <label>TANGGAL LAHIR</label>
+            <input type="date" id="inputBirthDate" class="input-box" style="color-scheme: dark;">
+        </div>
+        <div class="btn-container">
+            <button class="btn-action btn-back" onclick="switchPage('mainPage')">Kembali</button>
+            <button class="btn-action btn-save" onclick="saveAge()">Simpan</button>
+        </div>
+    </div>
+    <div id="genderPage" class="sub-page">
+        <div class="page-title">Ubah Gender</div>
+        <div class="page-desc">Pilih identitas gender Anda untuk personalisasi gaya bahasa interaksi AI yang lebih nyaman.</div>
+        <div class="form-group">
+            <label>GENDER</label>
+            <select id="inputGender" class="select-box" style="color-scheme: dark;">
+                <option value="">Pilih Gender</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+                <option value="Rahasia">Lebih baik tidak mengatakan</option>
+            </select>
+        </div>
+        <div class="btn-container">
+            <button class="btn-action btn-back" onclick="switchPage('mainPage')">Kembali</button>
+            <button class="btn-action btn-save" onclick="saveGender()">Simpan</button>
+        </div>
+    </div>
+    <div id="emailPage" class="sub-page">
+        <div class="page-title">Ganti Alamat Email</div>
+        <div class="page-desc">Masukkan alamat email baru Anda. Sistem akan meminta pembaruan autentikasi langsung demi keamanan.</div>
+        <div class="form-group">
+            <label>EMAIL SAAT INI</label>
+            <input type="email" id="oldEmail" class="input-box" placeholder="Masukkan email lama">
+        </div>
+        <div class="form-group">
+            <label>KATA SANDI SAAT INI</label>
+            <input type="password" id="emailPassword" class="input-box" placeholder="Masukkan sandi akun">
+        </div>
+        <div class="form-group">
+            <label>EMAIL BARU</label>
+            <input type="email" id="newEmail" class="input-box" placeholder="Masukkan email baru">
+        </div>
+        <div class="btn-container">
+            <button class="btn-action btn-back" onclick="switchPage('mainPage')">Kembali</button>
+            <button class="btn-action btn-save" onclick="saveEmail()">Perbarui</button>
+        </div>
+    </div>
+    <div id="passwordPage" class="sub-page">
+        <div class="page-title">Ganti Kata Sandi</div>
+        <div class="page-desc">Kata sandi minimal terdiri dari 6 karakter unik agar perlindungan akun tetap maksimal.</div>
+        <div class="form-group">
+            <label>KATA SANDI SAAT INI</label>
+            <input type="password" id="oldPassword" class="input-box" placeholder="Masukkan sandi lama">
+        </div>
+        <div class="form-group">
+            <label>KATA SANDI BARU</label>
+            <input type="password" id="newPassword" class="input-box" placeholder="Masukkan sandi baru">
+        </div>
+        <div class="form-group">
+            <label>KONFIRMASI KATA SANDI</label>
+            <input type="password" id="confirmPassword" class="input-box" placeholder="Konfirmasi sandi baru">
+        </div>
+        <div class="btn-container">
+            <button class="btn-action btn-back" onclick="switchPage('mainPage')">Kembali</button>
+            <button class="btn-action btn-save" onclick="savePassword()">Perbarui</button>
+        </div>
+    </div>
+</div>
+<div id="systemAlertModal" class="custom-alert-overlay">
+    <div class="custom-alert-box">
+        <div class="alert-icon">⚠️</div>
+        <h3 id="sysAlertTitle">Pemberitahuan</h3>
+        <p id="sysAlertMessage">Pesan teks alert disini...</p>
+        <div id="sysAlertActions" class="alert-actions"></div>
+    </div>
+</div>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDMNoOwpigjoyKQhw_luGXLpiMHAt5Yu3k",
+        authDomain: "nita-4cf57.firebaseapp.com",
+        databaseURL: "https://nita-4cf57-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "nita-4cf57",
+        storageBucket: "nita-4cf57.firebasestorage.app",
+        messagingSenderId: "1065921283781",
+        appId: "1:1065921283781:web:5c25c5780afdfd5d8e92ac"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const verifiedUsers = ["RVUWtrHLzAdqXqDSKoNkXulCsyS2"];
+    let currentData = {};
+    auth.onAuthStateChanged((user) => {
+        if (!user) {
+            location.href = "login.html";
+            return;
+        }
+        if (verifiedUsers.includes(user.uid)) {
+            document.getElementById("verifiedBadge").style.display = "inline-block";
+        } else {
+            document.getElementById("verifiedBadge").style.display = "none";
+        }
+        db.ref("users/" + user.uid).on("value", (snap) => {
+            currentData = snap.val() || {};
+            let tampilanNama = currentData.nama || ((currentData.firstName || "") + " " + (currentData.lastName || "")).trim() || "User";
+            document.getElementById("userName").innerText = tampilanNama;
+            if (currentData.hideEmail === true) {
+                document.getElementById("userEmail").style.display = "none";
+                document.getElementById("toggleHideEmail").checked = true;
+            } else {
+                document.getElementById("userEmail").innerText = user.email;
+                document.getElementById("userEmail").style.display = "block";
+                document.getElementById("toggleHideEmail").checked = false;
+            }
+            if (currentData.photoBase64) {
+                document.getElementById("profilePic").src = currentData.photoBase64;
+            }
+            const splitNama = tampilanNama.split(" ");
+            document.getElementById("inputFirstName").placeholder = splitNama[0] || "";
+            document.getElementById("inputLastName").placeholder = splitNama.slice(1).join(" ") || "";
+            let tglLahirNya = currentData.tglLahir || currentData.birthDate || "";
+            if (tglLahirNya) document.getElementById("inputBirthDate").value = tglLahirNya;
+            if (currentData.gender) document.getElementById("inputGender").value = currentData.gender;
+        });
+    });
+    async function updatePrivacyEmail() {
+        const isChecked = document.getElementById("toggleHideEmail").checked;
+        const uid = auth.currentUser.uid;
+        try {
+            await db.ref("users/" + uid).update({ hideEmail: isChecked });
+        } catch (error) {
+            console.error(error);
+            customAlert("Gagal memperbarui privasi email.", "Gagal");
+        }
+    }
+    document.getElementById("fileInput").onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            const base64 = ev.target.result;
+            document.getElementById("profilePic").src = base64;
+            const uid = auth.currentUser.uid;
+            document.getElementById("loadMsg").style.display = "block";
+            try {
+                await db.ref("users/" + uid).update({ photoBase64: base64 });
+            } catch (error) {
+                console.error(error);
+                customAlert("Gagal menyimpan foto profil ke database.", "Gagal");
+            }
+            document.getElementById("loadMsg").style.display = "none";
+        };
+        reader.readAsDataURL(file);
+    };
+    function switchPage(pageId) {
+        document.getElementById("mainPage").style.display = "none";
+        document.querySelectorAll('.sub-page').forEach(page => page.style.display = "none");
+        document.getElementById(pageId).style.display = "block";
+    }
+    function toggleDropdown(panelId, arrowId) {
+        const panel = document.getElementById(panelId);
+        const arrow = document.getElementById(arrowId);
+        panel.classList.toggle("show");
+        const isOpen = panel.classList.contains("show");
+        arrow.style.transform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
+    }
+    function hitungUmur(tglLahirStr) {
+        const lahir = new Date(tglLahirStr);
+        const sekarang = new Date();
+        let umur = sekarang.getFullYear() - lahir.getFullYear();
+        const m = sekarang.getMonth() - lahir.getMonth();
+        if (m < 0 || (m === 0 && sekarang.getDate() < lahir.getDate())) {
+            umur--;
+        }
+        return umur;
+    }
+    async function saveName() {
+        const first = document.getElementById("inputFirstName").value.trim();
+        const last = document.getElementById("inputLastName").value.trim();
+        const namaDepan = first || document.getElementById("inputFirstName").placeholder;
+        const namaBelakang = last || document.getElementById("inputLastName").placeholder;
+        const namaLengkap = (namaDepan + " " + namaBelakang).trim();
+        try {
+            await db.ref("users/" + auth.currentUser.uid).update({
+                nama: namaLengkap,
+                firstName: namaDepan,
+                lastName: namaBelakang
+            });
+            customAlert("Nama profil berhasil diperbarui!", "Berhasil");
+            document.getElementById("inputFirstName").value = "";
+            document.getElementById("inputLastName").value = "";
+            switchPage('mainPage');
+        } catch (error) {
+            console.error(error);
+            customAlert("Gagal memperbarui nama. Izin ditolak.", "Gagal");
+        }
+    }
+    async function saveAge() {
+        const tgl = document.getElementById("inputBirthDate").value;
+        if (!tgl) return customAlert("Mohon tentukan tanggal lahir Anda!", "Peringatan");
+        const umurBaru = hitungUmur(tgl);
+        try {
+            await db.ref("users/" + auth.currentUser.uid).update({
+                tglLahir: tgl,
+                birthDate: tgl,
+                umur: umurBaru
+            });
+            customAlert("Tanggal lahir & usia berhasil diperbarui!", "Berhasil");
+            switchPage('mainPage');
+        } catch (error) {
+            console.error(error);
+            customAlert("Gagal menyimpan tanggal lahir.", "Gagal");
+        }
+    }
+    async function saveGender() {
+        const gen = document.getElementById("inputGender").value;
+        if (!gen) return customAlert("Silakan pilih salah satu opsi gender yang tersedia!", "Peringatan");
+        try {
+            await db.ref("users/" + auth.currentUser.uid).update({ gender: gen });
+            customAlert("Informasi identitas gender berhasil disimpan!", "Berhasil");
+            switchPage('mainPage');
+        } catch (error) {
+            console.error(error);
+            customAlert("Gagal memperbarui data gender.", "Gagal");
+        }
+    }
+    async function saveEmail() {
+        const emailLama = document.getElementById("oldEmail").value.trim();
+        const passwordSaatIni = document.getElementById("emailPassword").value.trim();
+        const emailBaru = document.getElementById("newEmail").value.trim();
+        if (!emailLama) return customAlert("Masukkan alamat email saat ini terlebih dahulu!", "Data Kosong");
+        if (!passwordSaatIni) return customAlert("Masukkan kata sandi saat ini terlebih dahulu!", "Data Kosong");
+        if (!emailBaru) return customAlert("Masukkan alamat email baru Anda!", "Data Kosong");
+        customConfirm("Apakah Anda yakin ingin memperbarui alamat email akun Anda?", async (yakin) => {
+            if (!yakin) return;
+            try {
+                const credential = firebase.auth.EmailAuthProvider.credential(emailLama, passwordSaatIni);
+                await auth.currentUser.reauthenticateWithCredential(credential);
+                await auth.currentUser.verifyBeforeUpdateEmail(emailBaru);
+                await db.ref("users/" + auth.currentUser.uid).update({ email: emailBaru });
+                customAlert("Link verifikasi telah berhasil dikirim ke alamat email baru Anda!\n\nMohon segera periksa kotak masuk Anda. Harap cek folder SPAM jika link tidak kunjung muncul.", "Berhasil");
+                document.getElementById("oldEmail").value = "";
+                document.getElementById("emailPassword").value = "";
+                document.getElementById("newEmail").value = "";
+                switchPage('mainPage');
+            } catch (error) {
+                console.error(error);
+                if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
+                    customAlert("Gagal memverifikasi! Alamat email lama atau kata sandi yang Anda masukkan salah.", "Autentikasi Gagal");
+                } else if (error.code === "auth/invalid-email") {
+                    customAlert("Format penulisan alamat email baru tidak valid!", "Format Salah");
+                } else {
+                    customAlert("Terjadi kesalahan sistem: " + error.message, "Gagal");
+                }
+            }
+        });
+    }
+    async function savePassword() {
+        const passwordLama = document.getElementById("oldPassword").value.trim();
+        const passwordBaru = document.getElementById("newPassword").value.trim();
+        const konfirmasiPassword = document.getElementById("confirmPassword").value.trim();
+        if (!passwordLama) return customAlert("Masukkan kata sandi lama Anda!", "Data Kosong");
+        if (!passwordBaru) return customAlert("Masukkan kata sandi baru Anda!", "Data Kosong");
+        if (passwordBaru.length < 6) return customAlert("Kata sandi baru minimal harus terdiri dari 6 karakter!", "Keamanan Lemah");
+        if (passwordBaru !== konfirmasiPassword) return customAlert("Konfirmasi kata sandi baru yang Anda masukkan tidak cocok!", "Tidak Cocok");
+        customConfirm("Apakah Anda yakin ingin memperbarui kata sandi akun Anda?", async (yakin) => {
+            if (!yakin) return;
+            try {
+                const userEmail = auth.currentUser.email;
+                const credential = firebase.auth.EmailAuthProvider.credential(userEmail, passwordLama);
+                await auth.currentUser.reauthenticateWithCredential(credential);
+                await auth.currentUser.updatePassword(passwordBaru);
+                customAlert("Kata sandi akun Anda berhasil diperbarui!", "Berhasil");
+                document.getElementById("oldPassword").value = "";
+                document.getElementById("newPassword").value = "";
+                document.getElementById("confirmPassword").value = "";
+                switchPage('mainPage');
+            } catch (error) {
+                console.error(error);
+                if (error.code === "auth/wrong-password") {
+                    customAlert("Gagal memverifikasi! Kata sandi lama yang Anda masukkan salah.", "Autentikasi Gagal");
+                } else {
+                    customAlert("Terjadi kesalahan sistem: " + error.message, "Gagal");
+                }
+            }
+        });
+    }
+    function logout() {
+        customConfirm("Apakah Anda yakin ingin keluar dari akun?", (setuju) => {
+            if (setuju) {
+                auth.signOut();
+            }
+        });
+    }
+    let confirmCallback = null;
+    function customAlert(message, title = "Pemberitahuan") {
+        document.getElementById("sysAlertTitle").innerText = title;
+        document.getElementById("sysAlertMessage").innerText = message;
+        const actionsContainer = document.getElementById("sysAlertActions");
+        actionsContainer.innerHTML = `
+            <button onclick="closeSystemModal()" class="alert-btn alert-btn-primary">Mengerti</button>
+        `;
+        const modal = document.getElementById("systemAlertModal");
+        document.body.classList.add("alert-open");
+        modal.style.display = "flex";
+        setTimeout(() => modal.classList.add("show"), 10);
+    }
+    function customConfirm(message, callback, title = "Konfirmasi") {
+        document.getElementById("sysAlertTitle").innerText = title;
+        document.getElementById("sysAlertMessage").innerText = message;
+        confirmCallback = callback;
+        const actionsContainer = document.getElementById("sysAlertActions");
+        actionsContainer.innerHTML = `
+            <button onclick="handleConfirmResult(false)" class="alert-btn alert-btn-secondary">Batal</button>
+            <button onclick="handleConfirmResult(true)" class="alert-btn alert-btn-primary">Lanjut</button>
+        `;
+        const modal = document.getElementById("systemAlertModal");
+        document.body.classList.add("alert-open");
+        modal.style.display = "flex";
+        setTimeout(() => modal.classList.add("show"), 10);
+    }
+    function handleConfirmResult(result) {
+        closeSystemModal();
+        if (confirmCallback) {
+            confirmCallback(result);
+            confirmCallback = null;
+        }
+    }
+    function closeSystemModal() {
+        const modal = document.getElementById("systemAlertModal");
+        modal.classList.remove("show");
+        document.body.classList.remove("alert-open");
+        setTimeout(() => {
+            modal.style.display = "none";
+        }, 300);
+    }
+</script>
+</body>
+</html>
