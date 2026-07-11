@@ -358,28 +358,37 @@
         }
         const auth = firebase.auth();
         const db = firebase.database();
+        
         function toggleForm() {
             const loginForm = document.getElementById('loginForm');
             const registerForm = document.getElementById('registerForm');
             const forgotForm = document.getElementById('forgotPasswordForm');
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'none';
-            forgotForm.style.display = 'none';
-            if (loginForm.style.display === 'none' && registerForm.style.display === 'none' && forgotForm.style.display === 'none') {
-                loginForm.style.display = 'block';
-            } else if (loginForm.style.display === 'block') {
+            
+            if (loginForm.style.display !== 'none' && registerForm.style.display === 'none' && forgotForm.style.display === 'none') {
                 loginForm.style.display = 'none';
                 registerForm.style.display = 'block';
-            } else if (registerForm.style.display === 'block') {
-                registerForm.style.display = 'none';
+                forgotForm.style.display = 'none';
+            } else if (loginForm.style.display === 'none' && registerForm.style.display !== 'none' && forgotForm.style.display === 'none') {
                 loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                forgotForm.style.display = 'none';
+            } else if (loginForm.style.display === 'none' && registerForm.style.display === 'none' && forgotForm.style.display !== 'none') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                forgotForm.style.display = 'none';
+            } else {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                forgotForm.style.display = 'none';
             }
         }
+        
         function showForgotPassword() {
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('registerForm').style.display = 'none';
             document.getElementById('forgotPasswordForm').style.display = 'block';
         }
+        
         function customAlert(message, title = "Pemberitahuan") {
             document.getElementById("sysAlertTitle").innerText = title;
             document.getElementById("sysAlertMessage").innerText = message;
@@ -392,6 +401,7 @@
             modal.style.display = "flex";
             setTimeout(() => modal.classList.add("show"), 10);
         }
+        
         function customConfirm(message, callback, title = "Konfirmasi") {
             document.getElementById("sysAlertTitle").innerText = title;
             document.getElementById("sysAlertMessage").innerText = message;
@@ -406,6 +416,7 @@
             modal.style.display = "flex";
             setTimeout(() => modal.classList.add("show"), 10);
         }
+        
         function handleConfirmResult(result) {
             closeSystemModal();
             if (window._confirmCallback) {
@@ -413,6 +424,7 @@
                 window._confirmCallback = null;
             }
         }
+        
         function closeSystemModal() {
             const modal = document.getElementById("systemAlertModal");
             modal.classList.remove("show");
@@ -421,6 +433,7 @@
                 modal.style.display = "none";
             }, 300);
         }
+        
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
@@ -443,6 +456,7 @@
                 customAlert(errorMsg, "Gagal Masuk");
             }
         }
+        
         async function handleRegister() {
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
@@ -485,6 +499,7 @@
                 customAlert(errorMsg, "Gagal Mendaftar");
             }
         }
+        
         async function handleGoogleLogin() {
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
@@ -501,6 +516,7 @@
                 }
             }
         }
+        
         async function handleGoogleUser(user) {
             if (!user) return;
             const userRef = db.ref('users/' + user.uid);
@@ -522,6 +538,7 @@
             }
             window.location.href = 'index.html';
         }
+        
         auth.getRedirectResult().then((result) => {
             if (result.user) {
                 handleGoogleUser(result.user);
@@ -529,6 +546,7 @@
         }).catch((error) => {
             console.error("Redirect error:", error);
         });
+        
         async function handleResetPassword() {
             const email = document.getElementById('resetEmail').value.trim();
             if (!email) {
@@ -560,6 +578,7 @@
                 }
             );
         }
+        
         auth.onAuthStateChanged((user) => {
             if (user && window.location.pathname.includes('login.html')) {
                 window.location.href = 'index.html';
